@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Marquee from 'react-fast-marquee';
 import axios from "axios";
 import ProfileDropdown from "./ProfileDropdown";
 import { useNavigate } from "react-router-dom";
@@ -48,6 +49,9 @@ function GoalForm() {
   const isCompleted = (goal, dateKey) => {
     const exceptions = goal.exceptions || [];
     if (goal.recurrence && goal.recurrence !== 'one-time') {
+      // If there is an 'uncomplete' exception for this date, it's not completed
+      if (exceptions.some(ex => ex.date === dateKey && ex.type === 'uncomplete')) return false;
+      // Otherwise, completed if there is a 'complete' exception
       return exceptions.some(ex => ex.date === dateKey && ex.type === 'complete');
     }
     return goal.completed;
@@ -93,14 +97,25 @@ function GoalForm() {
   }
   statsGoals.forEach(goal => {
     if (goal.recurrence && goal.recurrence !== 'one-time') {
-      // Only consider occurrences after the goal's creation date
       const createdAt = dayjs(goal.createdAt).startOf('day');
       daysInRange.forEach(dateKey => {
         const dayObj = dayjs(dateKey);
-        if (dayObj.isBefore(createdAt, 'day')) return; // skip before creation
-        // For advanced: check recurrence pattern, for now, show for every day
+        if (dayObj.isBefore(createdAt, 'day')) return;
         const hasDelete = (goal.exceptions || []).some(ex => ex.date === dateKey && ex.type === 'delete');
-        if (!hasDelete) {
+        if (hasDelete) return;
+        // Only count if the recurrence pattern matches this day
+        const goalDate = dayjs(goal.deadline).startOf('day');
+        let matches = false;
+        if (goal.recurrence === 'daily') {
+          matches = true;
+        } else if (goal.recurrence === 'weekly') {
+          matches = goalDate.day() === dayObj.day();
+        } else if (goal.recurrence === 'monthly') {
+          matches = goalDate.date() === dayObj.date();
+        } else if (goal.recurrence === 'yearly') {
+          matches = goalDate.date() === dayObj.date() && goalDate.month() === dayObj.month();
+        }
+        if (matches) {
           totalOccurrences++;
           if (isCompleted(goal, dateKey)) {
             completedOccurrences++;
@@ -633,7 +648,15 @@ function GoalForm() {
             }}
           >
             <div style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 8 }}>Stats</div>
-            <div style={{ marginBottom: 12 }}>
+            <div style={{ width: '100%', marginBottom: 12 }}>
+              {/* Marquee for weekly reflection */}
+              <div style={{ marginBottom: 8, width: '100%' }}>
+                <div style={{ borderRadius: 6, overflow: 'hidden', background: '#e3f2fd', padding: '2px 0', width: '100%' }}>
+                  <Marquee gradient={false} speed={40} style={{ fontWeight: 600, color: '#1976d2', fontSize: '1rem', width: '100%' }}>
+                    Weekly Reflection: What did you accomplish? What can you improve next week? Celebrate your wins and set new goals!
+                  </Marquee>
+                </div>
+              </div>
               <button onClick={() => setStatsPeriod('today')} style={{ fontWeight: statsPeriod==='today'?700:400, marginRight: 8 }}>Today</button>
               <button onClick={() => setStatsPeriod('week')} style={{ fontWeight: statsPeriod==='week'?700:400, marginRight: 8 }}>This Week</button>
               <button onClick={() => setStatsPeriod('month')} style={{ fontWeight: statsPeriod==='month'?700:400 }}>This Month</button>
@@ -641,9 +664,10 @@ function GoalForm() {
             <div>Total tasks: <span style={{ fontWeight: 600 }}>{totalOccurrences}</span></div>
             <div>Completed: <span style={{ color: 'green', fontWeight: 600 }}>{completedOccurrences}</span></div>
             <div>Remaining: <span style={{ color: 'orange', fontWeight: 600 }}>{remainingOccurrences}</span></div>
-
-
             <div>Task Completion Streak: <span style={{ color: '#007bff', fontWeight: 700 }}>{completionStreak}x</span></div>
+            <button onClick={() => navigate('/detailed-stats')} style={{ marginTop: 16, background: '#1976d2', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 18px', fontWeight: 600, fontSize: '1rem', cursor: 'pointer', boxShadow: '0 1px 4px rgba(25, 118, 210, 0.08)' }}>
+              See Detailed Stats
+            </button>
           </div>
         </div>
       )}
@@ -737,27 +761,58 @@ function GoalForm() {
 function calculateStreak(goals, isCompleted) {
   let streak = 0;
   const today = dayjs().startOf('day');
-  for (let i = 0; i < 365; i++) { // up to 1 year
+  // Build a list of days (up to today) with at least one scheduled task, in reverse chronological order
+  let daysWithTasks = [];
+  for (let i = 0; i < 365; i++) {
     const day = today.subtract(i, 'day');
     const dateKey = day.format('YYYY-MM-DD');
-    let dayGoals = [];
-    goals.forEach(goal => {
-      if (day.isBefore(dayjs(goal.createdAt).startOf('day'))) return;
+    let hasTask = false;
+    for (const goal of goals) {
+      if (day.isBefore(dayjs(goal.createdAt).startOf('day'))) continue;
       const exceptions = goal.exceptions || [];
-      if (exceptions.some(ex => ex.date === dateKey && ex.type === 'delete')) return;
+      if (exceptions.some(ex => ex.date === dateKey && ex.type === 'delete')) continue;
       if (goal.recurrence && goal.recurrence !== 'one-time') {
-        dayGoals.push({ goal, dateKey });
+        // Only count if this recurrence actually occurs on this day
+        const goalDate = dayjs(goal.deadline).startOf('day');
+        if (
+          (goal.recurrence === 'daily') ||
+          (goal.recurrence === 'weekly' && goalDate.day() === day.day()) ||
+          (goal.recurrence === 'monthly' && goalDate.date() === day.date()) ||
+          (goal.recurrence === 'yearly' && goalDate.date() === day.date() && goalDate.month() === day.month())
+        ) {
+          hasTask = true;
+        }
       } else {
         const deadlineKey = dayjs(goal.deadline).format('YYYY-MM-DD');
-        if (deadlineKey === dateKey) {
-          dayGoals.push({ goal, dateKey });
-        }
+        if (deadlineKey === dateKey) hasTask = true;
       }
-    });
-    if (dayGoals.length === 0) {
-      continue;
     }
-    const allCompleted = dayGoals.every(({ goal, dateKey }) => isCompleted(goal, dateKey));
+    if (hasTask) daysWithTasks.push(dateKey);
+  }
+  // Count streak: for each day with tasks, all must be completed, or streak breaks
+  for (const dateKey of daysWithTasks) {
+    let allCompleted = true;
+    for (const goal of goals) {
+      if (dayjs(dateKey).isBefore(dayjs(goal.createdAt).startOf('day'))) continue;
+      const exceptions = goal.exceptions || [];
+      if (exceptions.some(ex => ex.date === dateKey && ex.type === 'delete')) continue;
+      if (goal.recurrence && goal.recurrence !== 'one-time') {
+        const goalDate = dayjs(goal.deadline).startOf('day');
+        let matches = false;
+        if (
+          (goal.recurrence === 'daily') ||
+          (goal.recurrence === 'weekly' && goalDate.day() === dayjs(dateKey).day()) ||
+          (goal.recurrence === 'monthly' && goalDate.date() === dayjs(dateKey).date()) ||
+          (goal.recurrence === 'yearly' && goalDate.date() === dayjs(dateKey).date() && goalDate.month() === dayjs(dateKey).month())
+        ) {
+          matches = true;
+        }
+        if (matches && !isCompleted(goal, dateKey)) allCompleted = false;
+      } else {
+        const deadlineKey = dayjs(goal.deadline).format('YYYY-MM-DD');
+        if (deadlineKey === dateKey && !isCompleted(goal, dateKey)) allCompleted = false;
+      }
+    }
     if (allCompleted) {
       streak++;
     } else {

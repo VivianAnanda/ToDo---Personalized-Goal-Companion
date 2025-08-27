@@ -1,0 +1,32 @@
+/* Simple marquee effect for weekly reflection */
+.weekly-reflection-marquee-container {
+  width: 100%;
+  max-width: 340px;
+  overflow: hidden;
+  background: #f0f4ff;
+  border-radius: 8px;
+  margin: 12px 0 0 0;
+  border: 1px solid #d0d8ee;
+  position: relative;
+  height: 2.2em;
+  display: block;
+}
+
+.weekly-reflection-marquee {
+  display: inline-block;
+  white-space: nowrap;
+  padding: 0 0.5em;
+  font-size: 1.1em;
+  color: #2a3a5a;
+  min-width: 2000px; /* Make text much wider than container to force scroll */
+  animation: scroll-left 18s linear infinite;
+}
+
+@keyframes scroll-left {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}

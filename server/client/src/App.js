@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "r
 import LoginForm from "./LoginForm";
 import GoalForm from "./GoalForm";
 import RegistrationForm from "./RegistrationForm";
+import DetailedStats from "./DetailedStats";
 
 const RequireAuth = ({ children }) => {
   const location = useLocation();
@@ -43,6 +44,14 @@ const App = () => {
           element={
             <RequireAuth>
               <GoalForm onLogout={() => setIsAuthenticated(false)} />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/detailed-stats"
+          element={
+            <RequireAuth>
+              <DetailedStats />
             </RequireAuth>
           }
         />
