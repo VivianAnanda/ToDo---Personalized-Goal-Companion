@@ -33,6 +33,7 @@ function GoalForm() {
   const [goals, setGoals] = useState([]);
   const [editMode, setEditMode] = useState(false);
   const [priorityFilter, setPriorityFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState("");
 
   const navigate = useNavigate();
 
@@ -675,20 +676,33 @@ function GoalForm() {
 
       <div style={{ marginTop: "2rem" }}>
         <h3>🗓️ Your Goals</h3>
-        <div style={{ marginBottom: '1rem' }}>
-          <label htmlFor="priorityFilter">Filter by Priority: </label>
-          <select
-            id="priorityFilter"
-            value={priorityFilter}
-            onChange={e => setPriorityFilter(e.target.value)}
-            style={{ marginLeft: 8, padding: '4px 8px', borderRadius: 4 }}
-          >
-            <option value="all">All</option>
-            <option value="urgent">Urgent</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
+        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+          <div>
+            <label htmlFor="priorityFilter">Filter by Priority: </label>
+            <select
+              id="priorityFilter"
+              value={priorityFilter}
+              onChange={e => setPriorityFilter(e.target.value)}
+              style={{ marginLeft: 8, padding: '4px 8px', borderRadius: 4 }}
+            >
+              <option value="all">All</option>
+              <option value="urgent">Urgent</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="searchGoals">Search: </label>
+            <input
+              id="searchGoals"
+              type="text"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              placeholder="Search by name or category"
+              style={{ marginLeft: 8, padding: '4px 8px', borderRadius: 4 }}
+            />
+          </div>
         </div>
         {goals.length === 0 ? (
           <p>No goals found. Add a new one above.</p>
@@ -703,6 +717,14 @@ function GoalForm() {
             // Apply priority filter
             if (priorityFilter !== 'all') {
               filteredGoals = filteredGoals.filter(goal => goal.priority === priorityFilter);
+            }
+            // Apply search filter
+            if (searchTerm.trim() !== "") {
+              const term = searchTerm.trim().toLowerCase();
+              filteredGoals = filteredGoals.filter(goal =>
+                (goal.title && goal.title.toLowerCase().includes(term)) ||
+                (goal.category && goal.category.toLowerCase().includes(term))
+              );
             }
             if (filteredGoals.length === 0) return null;
             return (
