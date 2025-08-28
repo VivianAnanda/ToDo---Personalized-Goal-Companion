@@ -32,6 +32,7 @@ function GoalForm() {
   const [message, setMessage] = useState("");
   const [goals, setGoals] = useState([]);
   const [editMode, setEditMode] = useState(false);
+  const [priorityFilter, setPriorityFilter] = useState('all');
 
   const navigate = useNavigate();
 
@@ -674,16 +675,35 @@ function GoalForm() {
 
       <div style={{ marginTop: "2rem" }}>
         <h3>🗓️ Your Goals</h3>
+        <div style={{ marginBottom: '1rem' }}>
+          <label htmlFor="priorityFilter">Filter by Priority: </label>
+          <select
+            id="priorityFilter"
+            value={priorityFilter}
+            onChange={e => setPriorityFilter(e.target.value)}
+            style={{ marginLeft: 8, padding: '4px 8px', borderRadius: 4 }}
+          >
+            <option value="all">All</option>
+            <option value="urgent">Urgent</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
         {goals.length === 0 ? (
           <p>No goals found. Add a new one above.</p>
         ) : (
           groupGoalsByDate(goals).map(([dateKey, dayGoals]) => {
             // Filter out tasks for which the day and end time have passed
             const now = dayjs();
-            const filteredGoals = dayGoals.filter(goal => {
+            let filteredGoals = dayGoals.filter(goal => {
               const endDateTime = dayjs(`${dateKey}T${goal.endTime}:00`);
               return endDateTime.isAfter(now);
             });
+            // Apply priority filter
+            if (priorityFilter !== 'all') {
+              filteredGoals = filteredGoals.filter(goal => goal.priority === priorityFilter);
+            }
             if (filteredGoals.length === 0) return null;
             return (
               <div key={dateKey} style={{ marginTop: "1rem", border: "1px solid #ccc", padding: "1rem", borderRadius: "8px" }}>
