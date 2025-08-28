@@ -34,6 +34,7 @@ function GoalForm() {
   const [editMode, setEditMode] = useState(false);
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState('deadline');
 
   const navigate = useNavigate();
 
@@ -676,7 +677,20 @@ function GoalForm() {
 
       <div style={{ marginTop: "2rem" }}>
         <h3>🗓️ Your Goals</h3>
-        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+  <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div>
+            <label htmlFor="sortGoals">Sort by: </label>
+            <select
+              id="sortGoals"
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value)}
+              style={{ marginLeft: 8, padding: '4px 8px', borderRadius: 4 }}
+            >
+              <option value="deadline">Deadline</option>
+              <option value="priority">Priority</option>
+              <option value="category">Category</option>
+            </select>
+          </div>
           <div>
             <label htmlFor="priorityFilter">Filter by Priority: </label>
             <select
@@ -725,6 +739,27 @@ function GoalForm() {
                 (goal.title && goal.title.toLowerCase().includes(term)) ||
                 (goal.category && goal.category.toLowerCase().includes(term))
               );
+            }
+            // Sort filteredGoals
+            if (sortBy === 'priority') {
+              const priorityOrder = { urgent: 1, high: 2, medium: 3, low: 4 };
+              filteredGoals = filteredGoals.slice().sort((a, b) => {
+                const aVal = priorityOrder[a.priority] || 5;
+                const bVal = priorityOrder[b.priority] || 5;
+                return aVal - bVal;
+              });
+            } else if (sortBy === 'category') {
+              filteredGoals = filteredGoals.slice().sort((a, b) => {
+                if (!a.category) return 1;
+                if (!b.category) return -1;
+                return a.category.localeCompare(b.category);
+              });
+            } else if (sortBy === 'deadline') {
+              filteredGoals = filteredGoals.slice().sort((a, b) => {
+                const aTime = dayjs(`${dateKey}T${a.endTime || '23:59'}:00`).valueOf();
+                const bTime = dayjs(`${dateKey}T${b.endTime || '23:59'}:00`).valueOf();
+                return aTime - bTime;
+              });
             }
             if (filteredGoals.length === 0) return null;
             return (
